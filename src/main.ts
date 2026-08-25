@@ -52,5 +52,9 @@ console.log('Ошибки после очистки:', buyerModel.validate());
 
 const api = new Api(API_URL);
 const shopApi = new ShopApi(api);
-const products = await shopApi.getProducts();
-console.log('Каталог, полученный с сервера:', products);
+shopApi.getProducts().then((response)=>{
+    productsModel.setProducts(response.items)
+    console.log('Каталог, полученный с сервера:', productsModel.getProducts());
+}).catch((error)=>{
+    console.error ('Ошибка при получении товаров с сервера', error);
+})
