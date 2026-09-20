@@ -1,7 +1,6 @@
 import { Card } from './Card';
 import { TPreviewCard } from '../../types';
 import { ensureElement, setCategory } from '../../utils/utils';
-import { CDN_URL } from '../../utils/constants';
 
 export class PreviewCard extends Card<TPreviewCard> {
     protected imageElement: HTMLImageElement;
@@ -24,7 +23,7 @@ export class PreviewCard extends Card<TPreviewCard> {
     }
 
     set image(value: string) {
-        this.setImage(this.imageElement, `${CDN_URL}${value}`);
+        this.setImage(this.imageElement, value);
     }
     set category(value: string) {
         setCategory(this.categoryElement, value);

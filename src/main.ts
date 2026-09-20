@@ -18,8 +18,8 @@ import { OrderForm } from './components/view/OrderForm';
 import { ContactsForm } from './components/view/ContactsForm';
 import { Success } from './components/view/Success';
 
-import type { IProduct, IOrderResponse, TBuyerInput, TOrder } from './types/index';
-import { API_URL } from './utils/constants';
+import type { IProduct, TBuyerInput, TOrder } from './types/index';
+import { API_URL, CDN_URL } from './utils/constants';
 import { cloneTemplate, ensureElement } from './utils/utils';
 
 const events = new EventEmitter();
@@ -42,7 +42,11 @@ const onBuyerInput = events.trigger<TBuyerInput>('buyer:input');
 
 const gallery = new Gallery(ensureElement<HTMLElement>('.gallery'));
 const header = new Header(ensureElement<HTMLElement>('.header'), events.trigger('basket:open'));
-const modal = new Modal(ensureElement<HTMLElement>('.modal'), events.trigger('modal:close'));
+const modal = new Modal(ensureElement<HTMLElement>('.modal'));
+const previewCard = new PreviewCard(
+    cloneTemplate<HTMLElement>(previewTemplate),
+    events.trigger('product:toggle'),
+);
 const basketView = new BasketView(
     cloneTemplate<HTMLElement>(basketTemplate),
     events.trigger('order:start'),
@@ -61,8 +65,6 @@ const success = new Success(
     cloneTemplate<HTMLElement>(successTemplate),
     events.trigger('success:close'),
 );
-
-let isOrderSubmitting = false;
 
 function openModal(content: HTMLElement): void {
     modal.render({ content });
@@ -131,6 +133,7 @@ events.on('products:changed', () => {
 
 events.on('product:selected', () => {
     const product = productsModel.getSelectedProduct();
+
     if (!product) {
         return;
     }
@@ -143,11 +146,6 @@ events.on('product:selected', () => {
     } else if (inBasket) {
         buttonText = 'Удалить из корзины';
     }
-
-    const previewCard = new PreviewCard(
-        cloneTemplate<HTMLElement>(previewTemplate),
-        events.trigger('product:toggle', { id: product.id }),
-    );
 
     openModal(
         previewCard.render({
@@ -178,8 +176,9 @@ events.on<Pick<IProduct, 'id'>>('card:select', ({ id }) => {
     productsModel.setSelectedProduct(product);
 });
 
-events.on<Pick<IProduct, 'id'>>('product:toggle', ({ id }) => {
-    const product = productsModel.getProductById(id);
+events.on('product:toggle', () => {
+    const product = productsModel.getSelectedProduct();
+
     if (!product || product.price === null) {
         return;
     }
@@ -215,7 +214,7 @@ events.on('order:start', () => {
 
 events.on<TBuyerInput>('buyer:input', ({ field, value }) => {
     if (field === 'payment') {
-        if (value !== 'card' && value !== 'cash' && value !== '') {
+        if (value !== 'card' && value !== 'cash') {
             return;
         }
 
@@ -227,73 +226,53 @@ events.on<TBuyerInput>('buyer:input', ({ field, value }) => {
 });
 
 events.on('order:next', () => {
-    const errors = buyerModel.validate();
-    if (errors.payment || errors.address) {
-        return;
-    }
-
-    renderBuyerForms();
     openModal(contactsForm.render());
 });
 
 events.on('order:submit', async () => {
-    if (isOrderSubmitting) {
-        return;
-    }
-
-    const errors = buyerModel.validate();
-    if (basketModel.getCount() === 0 || Object.keys(errors).length > 0) {
-        return;
-    }
-
     const order: TOrder = {
         ...buyerModel.getData(),
         total: basketModel.getTotal(),
         items: basketModel.getItems().map((product) => product.id),
     };
 
-    isOrderSubmitting = true;
-    let response: IOrderResponse;
+    contactsForm.setLoading(true);
 
     try {
-        response = await shopApi.createOrder(order);
+        const response = await shopApi.createOrder(order);
+
+        basketModel.clear();
+        buyerModel.clear();
+
+        openModal(
+            success.render({
+                total: response.total,
+            }),
+        );
     } catch (error: unknown) {
         console.error('Не удалось оформить заказ:', error);
+
         openModal(
             contactsForm.render({
                 errors: 'Не удалось оформить заказ. Попробуйте ещё раз.',
             }),
         );
-        return;
     } finally {
-        isOrderSubmitting = false;
+        contactsForm.setLoading(false);
     }
-
-    basketModel.getItems().forEach((product) => {
-        if (order.items.includes(product.id)) {
-            basketModel.removeItem(product);
-        }
-    });
-
-    const buyer = buyerModel.getData();
-    if (
-        buyer.payment === order.payment &&
-        buyer.address === order.address &&
-        buyer.email === order.email &&
-        buyer.phone === order.phone
-    ) {
-        buyerModel.clear();
-    }
-
-    openModal(success.render({ total: response.total }));
 });
 
-events.on('modal:close', () => modal.close());
 events.on('success:close', () => modal.close());
 
 shopApi
     .getProducts()
-    .then((response) => productsModel.setProducts(response.items))
+    .then((response) => {
+        response.items.forEach((product) => {
+            product.image = `${CDN_URL}${product.image}`;
+        });
+
+        productsModel.setProducts(response.items);
+    })
     .catch((error: unknown) => {
         console.error('Не удалось загрузить или отобразить каталог товаров:', error);
     });

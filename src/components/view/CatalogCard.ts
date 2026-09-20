@@ -1,7 +1,7 @@
 import { Card } from './Card';
 import { TCatalogCard } from '../../types';
 import { ensureElement } from '../../utils/utils';
-import { categoryMap, CDN_URL } from '../../utils/constants';
+import { categoryMap } from '../../utils/constants';
 
 export class CatalogCard extends Card<TCatalogCard> {
     protected imageElement: HTMLImageElement;
@@ -18,7 +18,7 @@ export class CatalogCard extends Card<TCatalogCard> {
     }
 
     set image(value: string) {
-        this.setImage(this.imageElement, `${CDN_URL}${value}`);
+        this.setImage(this.imageElement, value);
     }
 
     set category(value: string) {

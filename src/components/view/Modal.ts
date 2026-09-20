@@ -1,23 +1,31 @@
 import { Component } from '../base/Component';
-import { TModal } from '../../types';
+import type { TModal } from '../../types';
 import { ensureElement } from '../../utils/utils';
 
 export class Modal extends Component<TModal> {
     protected contentElement: HTMLElement;
     protected closeButtonElement: HTMLButtonElement;
 
-    constructor(container: HTMLElement, onClose: () => void) {
+    constructor(container: HTMLElement) {
         super(container);
 
-        this.contentElement = ensureElement<HTMLElement>('.modal__content', this.container);
+        this.contentElement = ensureElement<HTMLElement>(
+            '.modal__content',
+            this.container
+        );
 
-        this.closeButtonElement = ensureElement<HTMLButtonElement>('.modal__close', this.container);
+        this.closeButtonElement = ensureElement<HTMLButtonElement>(
+            '.modal__close',
+            this.container
+        );
 
-        this.closeButtonElement.addEventListener('click', onClose);
+        this.closeButtonElement.addEventListener('click', () => {
+            this.close();
+        });
 
         this.container.addEventListener('click', (event) => {
             if (event.target === this.container) {
-                onClose();
+                this.close();
             }
         });
     }
