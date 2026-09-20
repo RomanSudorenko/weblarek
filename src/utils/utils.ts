@@ -1,3 +1,5 @@
+import { categoryMap } from './constants';
+
 export function pascalToKebab(value: string): string {
     return value.replace(/([a-z0–9])([A-Z])/g, "$1-$2").toLowerCase();
 }
@@ -135,4 +137,12 @@ export function createElement<
         }
     }
     return element;
+}
+
+export function setCategory(element: HTMLElement,category: string): void {
+    element.textContent = category;
+
+    for (const [name, className] of Object.entries(categoryMap)) {
+        element.classList.toggle(className, name === category);
+    }
 }
